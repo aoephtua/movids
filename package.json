@@ -1,0 +1,23 @@
+{
+  "name": "movids",
+  "version": "0.1.0",
+  "description": "Command line tool and library for fetching records of IP cameras by motion detection",
+  "main": "./src/lib.mjs",
+  "type": "module",
+  "bin": {
+    "movids": "./src/cli.mjs"
+  },
+  "author": "Thorsten A. Weintz",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:aoephtua/movids.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "chalk": "^5.0.1",
+    "commander": "^9.3.0",
+    "ipcamsd": "^0.2.2",
+    "moment": "^2.29.3"
+  }
+}
