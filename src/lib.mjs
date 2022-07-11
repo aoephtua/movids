@@ -206,7 +206,10 @@ async function downloadRecords(motion, idx) {
         const format = config.format;
 
         const params = {
-            date: startDate.format(format.date),
+            date: {
+                start: startDate.format(format.date),
+                end: endDate.format(format.date)
+            },
             time: {
                 start: startDate.format(format.time),
                 end: endDate.format(format.time)
