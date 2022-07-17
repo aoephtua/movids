@@ -5,7 +5,7 @@ import fs from 'fs';
 import chalk from 'chalk';
 import axios from 'axios';
 import moment from 'moment';
-import lib from 'ipcamsd';
+import ipcamsd from 'ipcamsd';
 
 /**
  * Writes a message to the console
@@ -170,13 +170,13 @@ function createDirectory(name) {
 
 /**
  * Executes command to fetch records with public interface of ipcamsd
- * @param {*} ipcamsd Object with ipcamsd configuration values
+ * @param {*} config Object with ipcamsd configuration values
  * @param {*} dateTime Object with date and time values
  * @param {*} directoryName String with directory name
  */
-async function execFetchCommand(ipcamsd, dateTime, directoryName) {
-    await lib.fetch(ipcamsd.hosts, {
-        auth: ipcamsd.auth,
+async function execFetchCommand(config, dateTime, directoryName) {
+    await ipcamsd.fetch(config.hosts, {
+        auth: config.auth,
         fs: {
             directory: directoryName
         },
