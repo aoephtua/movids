@@ -8,7 +8,7 @@ import { process } from './lib.mjs';
 
 program
     .name('movids')
-    .version('0.2.0', '-v, --version')
+    .version('0.3.0', '-v, --version')
     .requiredOption('--start-date <yyyymmdd|today|yesterday>', 'start date of records')
     .requiredOption('--start-time <hhmm>', 'start time of records')
     .requiredOption('--end-date <yyyymmdd|today|yesterday>', 'end date of records')

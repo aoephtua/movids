@@ -53,11 +53,15 @@ const config = {
         }
     },
     ipcamsd: {
-        hosts: [ '192.168.178.30', '192.168.178.31' ],
-        auth: {
+        cameras: [{
+            host: '192.168.178.30',
             username: 'admin',
             password: 'admin'
-        },
+        }, {
+            host: '192.168.178.31',
+            username: 'admin',
+            password: 'admin'
+        }],
         minutesIfEndDateIsNull: 3
     },
     format: {

@@ -8,12 +8,12 @@ import moment from 'moment';
 import ipcamsd from 'ipcamsd';
 
 /**
- * Writes a message to the console
+ * Writes a message to the console.
  */
 const log = console.log;
 
 /**
- * Object with default configuration parameters
+ * Object with default configuration parameters.
  */
 const config = {
     restApi: {
@@ -33,11 +33,15 @@ const config = {
         }
     },
     ipcamsd: {
-        hosts: [ '192.168.178.30', '192.168.178.31' ],
-        auth: {
+        cameras: [{
+            host: '192.168.178.30',
             username: 'admin',
             password: 'admin'
-        },
+        }, {
+            host: '192.168.178.31',
+            username: 'admin',
+            password: 'admin'
+        }],
         minutesIfEndDateIsNull: 3
     },
     format: {
@@ -47,11 +51,12 @@ const config = {
 };
 
 /**
- * Adds custom prefix to string value
- * @param {*} value String value 
- * @param {*} prefix Prefix value
- * @param {*} length Length of prefix value
- * @returns 
+ * Adds custom prefix to string value.
+ * 
+ * @param {string} value String value to add custom prefix.
+ * @param {string} prefix Prefix value to add to string.
+ * @param {number} length Length of prefix value.
+ * @returns String with prefix and value.
  */
 function setPrefix(value, prefix, length) {
     for (let i = 0; i < (length || 1); i++) {
@@ -62,9 +67,10 @@ function setPrefix(value, prefix, length) {
 }
 
 /**
- * Gets date instance of Moment.js by command line parameters
- * @param {*} date Date value of command line
- * @returns Value of Moment.js or undefined
+ * Gets date instance of Moment.js by command line parameters.
+ * 
+ * @param {date} date Date value of command line.
+ * @returns Value of Moment.js or undefined.
  */
 function getDate(date) {
     if (date) {
@@ -86,13 +92,14 @@ function getDate(date) {
 }
 
 /**
- * Sets time segments to date instance of Moment.js
- * @param {*} date Date value
- * @param {*} timeStr Time string
+ * Sets time segments to date instance of Moment.js.
+ * 
+ * @param {date} date Date to attach time parts.
+ * @param {string} timeStr String with time to set.
  */
 function setTime(date, timeStr) {
     if (timeStr && timeStr.length >= 1) {
-        let time = moment(timeStr, config.format.time);
+        const time = moment(timeStr, config.format.time);
 
         date.set({
             hour: time.get('hour'),
@@ -103,7 +110,8 @@ function setTime(date, timeStr) {
 }
 
 /**
- * Gets times in milliseconds by start and end date command line parameters
+ * Gets times in milliseconds by start and end date command line parameters.
+ * 
  * @returns Object with start and end dates in milliseconds
  */
 function getTimes() {
@@ -119,11 +127,12 @@ function getTimes() {
 }
 
 /**
- * Gets URL to fetch motions by sending HTTP request
- * @param {*} startTime Start time in milliseconds
- * @param {*} endTime End time in milliseconds
- * @param {*} restApi Object with API configuration values
- * @param {*} motions Object with motions configuration values
+ * Gets URL to fetch motions by sending HTTP request.
+ * 
+ * @param {number} startTime Start time in milliseconds.
+ * @param {number} endTime End time in milliseconds.
+ * @param {object} restApi Object with API configuration values.
+ * @param {object} motions Object with motions configuration values.
  * @returns 
  */
 function getMotionsUrl(startTime, endTime, restApi, motions) {
@@ -135,10 +144,11 @@ function getMotionsUrl(startTime, endTime, restApi, motions) {
 }
 
 /**
- * Fetches motions by sending HTTP request
- * @param {*} startTime Start time in milliseconds
- * @param {*} endTime End time in milliseconds
- * @returns Array with motions and count
+ * Fetches motions by sending HTTP request.
+ * 
+ * @param {number} startTime Start time in milliseconds.
+ * @param {number} endTime End time in milliseconds.
+ * @returns Array with motions and count.
  */
 async function getMotions(startTime, endTime) {
     let restApi = config.restApi;
@@ -154,9 +164,10 @@ async function getMotions(startTime, endTime) {
 }
 
 /**
- * Creates directory by name
- * @param {*} name String with target name
- * @returns String with directory name
+ * Creates directory by name.
+ * 
+ * @param {string} name String with target name.
+ * @returns String with directory name.
  */
 function createDirectory(name) {
     let directoryName = `./${name}`;
@@ -169,25 +180,64 @@ function createDirectory(name) {
 }
 
 /**
- * Executes command to fetch records with public interface of ipcamsd
- * @param {*} config Object with ipcamsd configuration values
- * @param {*} dateTime Object with date and time values
- * @param {*} directoryName String with directory name
+ * Prepares camera values for ipcamsd.
+ * 
+ * @param {Array} cameras Array with camera entries.
+ * @param {string} key String with key of camera property.
+ * @param {string} defaultValue String with default value.
+ * @returns Array with firmwares for ipcamsd.
  */
-async function execFetchCommand(config, dateTime, directoryName) {
-    await ipcamsd.fetch(config.hosts, {
-        auth: config.auth,
-        fs: {
-            directory: directoryName
-        },
-        dateTime
-    });
+function getCameraValues(cameras, key, defaultValue) {
+    return cameras
+        .map(camera => camera[key] || defaultValue);
+}
+
+/**
+ * Prepares authentication object for ipcamsd.
+ * 
+ * @param {Array} cameras Array with camera entries.
+ * @returns Object with authentication properties for ipcamsd.
+ */
+function getAuthenticationObject(cameras) {
+    const auth = {};
+
+    for (const camera of cameras) {
+        for (const key of ['host', 'username', 'password', 'ssl']) {
+            const target = `${key}s`;
+            const value = camera[key];
+
+            if (!auth[target]) auth[target] = [];
+
+            if (value) {
+                auth[target].push(value);
+            }
+        }
+    }
+
+    return auth;
+}
+
+/**
+ * Executes command to fetch records with public interface of ipcamsd.
+ * 
+ * @param {object} config Object with ipcamsd configuration values.
+ * @param {object} dateTime Object with options for ipcamsd.
+ */
+async function execFetchCommand(config, options) {
+    const instance = new ipcamsd();
+
+    const { cameras } = config;
+    const firmwares = getCameraValues(cameras, 'firmware', 'hi3510');
+    const auth = getAuthenticationObject(cameras);
+
+    await instance.process('fetch', firmwares, auth, options);
 }
 
 /**
  * Downloads, transfers and converts records by detected motions
- * @param {*} motion Object with motion entry
- * @param {*} idx Index of motion entry
+ * 
+ * @param {object} motion Object with motion entry.
+ * @param {number} idx Index of motion entry.
  */
 async function downloadRecords(motion, idx) {
     const ipcamsd = config.ipcamsd;
@@ -198,6 +248,7 @@ async function downloadRecords(motion, idx) {
 
     let name = `${startDate.format('YYYYMMDD_HHmmss')}_${endDate.format('HHmmss')}`;
 
+    log('');
     log(chalk.cyanBright(`${('0' + (idx + 1)).slice(-2)}. ${name}`));
 
     let directoryName = createDirectory(name);
@@ -205,25 +256,22 @@ async function downloadRecords(motion, idx) {
     if (directoryName) {
         const format = config.format;
 
-        const params = {
-            date: {
-                start: startDate.format(format.date),
-                end: endDate.format(format.date)
-            },
-            time: {
-                start: startDate.format(format.time),
-                end: endDate.format(format.time)
-            }
+        const options = {
+            targetDirectory: directoryName,
+            startDate: startDate.format(format.date),
+            endDate: endDate.format(format.date),
+            startTime: startDate.format(format.time),
+            endTime: endDate.format(format.time)
         };
 
-        await execFetchCommand(ipcamsd, params, directoryName);
+        await execFetchCommand(ipcamsd, options);
     } else {
         log(setPrefix('No actions executed. Directory already exists.', ' ', 4));
     }
 }
 
 /**
- * Gets motions of API and fetches records with public interface of ipcamsd
+ * Gets motions of API and fetches records with public interface of ipcamsd.
  */
 async function fetchRecords() {
     let times = getTimes();
@@ -246,8 +294,9 @@ async function fetchRecords() {
 }
 
 /**
- * Processes parameters and executes main command
- * @param {*} options Object with options of command line interface
+ * Processes parameters and executes main command.
+ * 
+ * @param {object} options Object with options of command line interface.
  */
 export async function process(options) {
     config.options = options;
