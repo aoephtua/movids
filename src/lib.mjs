@@ -26,7 +26,8 @@ const config = {
                 reverse: true,
                 utc: true,
                 keys: {
-                    date: 'start'
+                    date: 'date',
+                    endDate: 'endDate'
                 },
                 limit: 0
             }
@@ -234,6 +235,21 @@ async function execFetchCommand(config, options) {
 }
 
 /**
+ * Gets object with motion dates by endpoint keys.
+ * 
+ * @param {*} motion Object with motion values.
+ * @returns Object with date values of motion.
+ */
+function getMotionDates(motion) {
+    const keys = config.restApi.endpoints.motions.keys;
+
+    return {
+        start: motion[keys.date],
+        end: motion[keys.endDate]
+    };
+}
+
+/**
  * Downloads, transfers and converts records by detected motions
  * 
  * @param {object} motion Object with motion entry.
@@ -241,10 +257,11 @@ async function execFetchCommand(config, options) {
  */
 async function downloadRecords(motion, idx) {
     const ipcamsd = config.ipcamsd;
+    const dates = getMotionDates(motion);
 
-    let startDate = moment(motion.start);
-    let endDate = motion.end ? moment(motion.end) :
-        moment(motion.start).add(ipcamsd.minutesIfEndDateIsNull, 'minutes');
+    let startDate = moment(dates.start);
+    let endDate = dates.end ? moment(dates.end) :
+        moment(dates.start).add(ipcamsd.minutesIfEndDateIsNull, 'minutes');
 
     let name = `${startDate.format('YYYYMMDD_HHmmss')}_${endDate.format('HHmmss')}`;
 

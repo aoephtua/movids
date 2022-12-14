@@ -46,7 +46,8 @@ const config = {
                 reverse: true,
                 utc: true,
                 keys: {
-                    date: 'start'
+                    date: 'date',
+                    endDate: 'endDate'
                 },
                 limit: 0
             }
