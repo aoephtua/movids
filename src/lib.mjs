@@ -20,7 +20,7 @@ const config = {
         baseUrl: 'http://192.168.178.96:8000',
         endpoints: {
             motions: {
-                path: 'e7b0c7b844bd4fd28e50c3c8dd8a49e5',
+                path: 'api/motions',
                 count: 'count',
                 entries: 'data',
                 reverse: true,
