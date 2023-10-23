@@ -1,4 +1,4 @@
-// Copyright (c) 2022, Thorsten A. Weintz. All rights reserved.
+// Copyright (c) 2023, Thorsten A. Weintz. All rights reserved.
 // Licensed under the MIT license. See LICENSE in the project root for license information.
 
 import fs from 'fs';
@@ -28,6 +28,9 @@ const config = {
                 keys: {
                     date: 'date',
                     endDate: 'endDate'
+                },
+                queryParams: {
+                    device: '63f47d4503961d23f1ea98f2'
                 },
                 limit: 0
             }
@@ -137,11 +140,16 @@ function getTimes() {
  * @returns 
  */
 function getMotionsUrl(startTime, endTime, restApi, motions) {
-    let key = motions.keys.date;
+    let { keys: { date }, queryParams, limit } = motions;
 
-    let queryParams = `?${key}=$gte;${startTime}&${key}=$lte;${endTime}&limit=${motions.limit}`;
+    let params = new URLSearchParams([
+        ...Object.entries(queryParams || {}),
+        [date, `$gte;${startTime}`],
+        [date, `$lte;${endTime}`],
+        ['limit', limit]
+    ]);
 
-    return `${restApi.baseUrl}/${motions.path}${queryParams}`;
+    return `${restApi.baseUrl}/${motions.path}?${params.toString()}`;
 }
 
 /**
@@ -241,11 +249,11 @@ async function execFetchCommand(config, options) {
  * @returns Object with date values of motion.
  */
 function getMotionDates(motion) {
-    const keys = config.restApi.endpoints.motions.keys;
+    const { keys: { date, endDate } } = config.restApi.endpoints.motions;
 
     return {
-        start: motion[keys.date],
-        end: motion[keys.endDate]
+        start: motion[date],
+        end: motion[endDate]
     };
 }
 

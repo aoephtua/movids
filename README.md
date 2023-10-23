@@ -49,6 +49,9 @@ const config = {
                     date: 'date',
                     endDate: 'endDate'
                 },
+                queryParams: {
+                    device: '63f47d4503961d23f1ea98f2'
+                },
                 limit: 0
             }
         }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Copyright (c) 2022, Thorsten A. Weintz. All rights reserved.
+// Copyright (c) 2023, Thorsten A. Weintz. All rights reserved.
 // Licensed under the MIT license. See LICENSE in the project root for license information.
 
 import { program } from 'commander';
