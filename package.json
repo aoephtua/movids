@@ -1,6 +1,6 @@
 {
   "name": "movids",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Command line tool and library for fetching records of IP cameras by motion detection",
   "main": "./src/lib.mjs",
   "type": "module",
