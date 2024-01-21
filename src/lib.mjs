@@ -274,7 +274,7 @@ async function downloadRecords(motion, idx) {
     let name = `${startDate.format('YYYYMMDD_HHmmss')}_${endDate.format('HHmmss')}`;
 
     log('');
-    log(chalk.cyanBright(`${('0' + (idx + 1)).slice(-2)}. ${name}`));
+    log(chalk.cyanBright.bold.underline(`${('0' + (idx + 1)).slice(-2)}. ${name}`));
 
     let directoryName = createDirectory(name);
 
@@ -301,15 +301,15 @@ async function downloadRecords(motion, idx) {
 async function fetchRecords() {
     let times = getTimes();
     let motions = await getMotions(times.start, times.end);
-    let data = motions.data;
+    let { count, data } = motions;
 
     if (data && Array.isArray(data)) {
         if (config.restApi.endpoints.motions.reverse) {
             data = data.reverse();
         }
 
-        if (motions.count !== null) {
-            log(chalk.magentaBright(`${motions.count} motions found.`));   
+        if (count !== null) {
+            log(chalk.magentaBright(`${count} motion${count > 1 ? 's' : ''} found.`));
         }
 
         for (let i = 0; i < data.length; i++) {
