@@ -221,6 +221,7 @@ function getMotionDates(motion) {
  * 
  * @param {string} directoryName String with name of directory.
  * @param {object} motion Object with motion entry.
+ * @returns Returns length of entries or undefined.
  */
 async function fetchSnapshots(directoryName, motion) {
     const snapshots = motions.snapshots;
@@ -228,28 +229,30 @@ async function fetchSnapshots(directoryName, motion) {
     if (snapshots) {
         const { [snapshots.key]: entries } = motion;
         const len = entries.length;
-        
-        log(chalk.green.bold('Snapshots'));
 
-        for (let i = 0; i < len; i++) {
-            const { [snapshots.id]: id, [snapshots.name]: name } = entries[i];
-            const fileName = name || padWithZeros(i + 1, len);
-            const fileNameWithExt = `${fileName}.${snapshots.ext}`;
-            const fullName = path.join(directoryName, fileNameWithExt);
-            const url = `${baseUrl}/${snapshots.getPath(id)}`;
+        if (len) {
+            log(chalk.green.bold('Snapshots'));
 
-            try {
-                const { data } = await axios.get(url, { responseType: 'arraybuffer' });
-
-                fs.writeFileSync(fullName, data);
+            for (let i = 0; i < len; i++) {
+                const { [snapshots.id]: id, [snapshots.name]: name } = entries[i];
+                const fileName = name || padWithZeros(i + 1, len);
+                const fileNameWithExt = `${fileName}.${snapshots.ext}`;
+                const fullName = path.join(directoryName, fileNameWithExt);
+                const url = `${baseUrl}/${snapshots.getPath(id)}`;
     
-                log(`Downloaded file ${fileNameWithExt}`);
-            } catch {
-                log(`Error while fetching file ${fileNameWithExt}`);
+                try {
+                    const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+    
+                    fs.writeFileSync(fullName, data);
+        
+                    log(`Downloaded file ${fileNameWithExt}`);
+                } catch {
+                    log(`Error while fetching file ${fileNameWithExt}`);
+                }
             }
         }
 
-        log('');
+        return len;
     }
 }
 
@@ -296,11 +299,15 @@ async function fetchMedia(motion, idx, len) {
     if (directoryName) {
         const opts = config.options;
 
+        let snaps;
+
         if (opts.snapshots) {
-            await fetchSnapshots(directoryName, motion);
+            snaps = await fetchSnapshots(directoryName, motion);
         }
         
         if (opts.videos) {
+            if (snaps) log('');
+
             await fetchVideos(directoryName, startDate, endDate);
         }
     } else {
