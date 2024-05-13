@@ -2,10 +2,12 @@
 // Licensed under the MIT license. See LICENSE in the project root for license information.
 
 import fs from 'fs';
+import path from 'path';
 import chalk from 'chalk';
 import axios from 'axios';
 import moment from 'moment';
-import ipcamsd from 'ipcamsd';
+import Ipcamsd from 'ipcamsd';
+import config from './config.mjs';
 
 /**
  * Writes a message to the console.
@@ -13,61 +15,26 @@ import ipcamsd from 'ipcamsd';
 const log = console.log;
 
 /**
- * Object with default configuration parameters.
+ * Destructed values of configuration object.
  */
-const config = {
-    restApi: {
-        baseUrl: 'http://192.168.178.96:8000',
-        endpoints: {
-            motions: {
-                path: 'api/motions',
-                count: 'count',
-                entries: 'data',
-                reverse: true,
-                utc: true,
-                keys: {
-                    date: 'date',
-                    endDate: 'endDate'
-                },
-                queryParams: {
-                    device: '63f47d4503961d23f1ea98f2'
-                },
-                limit: 0
-            }
-        }
-    },
-    ipcamsd: {
-        cameras: [{
-            host: '192.168.178.30',
-            username: 'admin',
-            password: 'admin'
-        }, {
-            host: '192.168.178.31',
-            username: 'admin',
-            password: 'admin'
-        }],
-        minutesIfEndDateIsNull: 3
-    },
-    format: {
-        date: 'YYYYMMDD',
-        time: 'HHmmss'
-    }
-};
+const { restApi: { baseUrl, endpoints }, ipcamsd, format } = config;
 
 /**
- * Adds custom prefix to string value.
- * 
- * @param {string} value String value to add custom prefix.
- * @param {string} prefix Prefix value to add to string.
- * @param {number} length Length of prefix value.
- * @returns String with prefix and value.
+ * Destructed values of endpoints.
  */
-function setPrefix(value, prefix, length) {
-    for (let i = 0; i < (length || 1); i++) {
-        value = `${prefix}${value}`;
-    }
+const { motions } = endpoints;
 
-    return value;
+/**
+ * Pads value with leading zeros on the left by length.
+ * 
+ * @param {string|number} value String with value.
+ * @param {number} len Total length of entries for padding.
+ * @returns Returns string value with leading zeros.
+ */
+function padWithZeros(value, len) {
+    const cnt = (len + '').length;
+    
+    return (new Array(cnt).join('0') + value).slice(-cnt);
 }
 
 /**
@@ -103,7 +70,7 @@ function getDate(date) {
  */
 function setTime(date, timeStr) {
     if (timeStr && timeStr.length >= 1) {
-        const time = moment(timeStr, config.format.time);
+        const time = moment(timeStr, format.time);
 
         date.set({
             hour: time.get('hour'),
@@ -135,11 +102,9 @@ function getTimes() {
  * 
  * @param {number} startTime Start time in milliseconds.
  * @param {number} endTime End time in milliseconds.
- * @param {object} restApi Object with API configuration values.
- * @param {object} motions Object with motions configuration values.
- * @returns 
+ * @returns String with full URL of motions endpoint.
  */
-function getMotionsUrl(startTime, endTime, restApi, motions) {
+function getMotionsUrl(startTime, endTime) {
     let { keys: { date }, queryParams, limit } = motions;
 
     let params = new URLSearchParams([
@@ -149,7 +114,7 @@ function getMotionsUrl(startTime, endTime, restApi, motions) {
         ['limit', limit]
     ]);
 
-    return `${restApi.baseUrl}/${motions.path}?${params.toString()}`;
+    return `${baseUrl}/${motions.path}?${params.toString()}`;
 }
 
 /**
@@ -160,10 +125,7 @@ function getMotionsUrl(startTime, endTime, restApi, motions) {
  * @returns Array with motions and count.
  */
 async function getMotions(startTime, endTime) {
-    let restApi = config.restApi;
-    let motions = restApi.endpoints.motions;
-
-    let url = getMotionsUrl(startTime, endTime, restApi, motions);
+    let url = getMotionsUrl(startTime, endTime);
     let response = await axios.get(url);
 
     return { 
@@ -229,27 +191,24 @@ function getAuthenticationObject(cameras) {
 /**
  * Executes command to fetch records with public interface of ipcamsd.
  * 
- * @param {object} config Object with ipcamsd configuration values.
  * @param {object} dateTime Object with options for ipcamsd.
  */
-async function execFetchCommand(config, options) {
-    const instance = new ipcamsd();
-
-    const { cameras } = config;
+async function execFetchCommand(options) {
+    const { cameras } = ipcamsd;
     const firmwares = getCameraValues(cameras, 'firmware', 'hi3510');
     const auth = getAuthenticationObject(cameras);
 
-    await instance.process('fetch', firmwares, auth, options);
+    await new Ipcamsd().process('fetch', firmwares, auth, options);
 }
 
 /**
  * Gets object with motion dates by endpoint keys.
  * 
- * @param {*} motion Object with motion values.
+ * @param {object} motion Object with motion entry.
  * @returns Object with date values of motion.
  */
 function getMotionDates(motion) {
-    const { keys: { date, endDate } } = config.restApi.endpoints.motions;
+    const { keys: { date, endDate } } = motions;
 
     return {
         start: motion[date],
@@ -258,13 +217,69 @@ function getMotionDates(motion) {
 }
 
 /**
- * Downloads, transfers and converts records by detected motions
+ * Downloads captured snapshots of detected motion.
+ * 
+ * @param {string} directoryName String with name of directory.
+ * @param {object} motion Object with motion entry.
+ */
+async function fetchSnapshots(directoryName, motion) {
+    const snapshots = motions.snapshots;
+
+    if (snapshots) {
+        const { [snapshots.key]: entries } = motion;
+        const len = entries.length;
+        
+        log(chalk.green.bold('Snapshots'));
+
+        for (let i = 0; i < len; i++) {
+            const { [snapshots.id]: id, [snapshots.name]: name } = entries[i];
+            const fileName = name || padWithZeros(i + 1, len);
+            const fileNameWithExt = `${fileName}.${snapshots.ext}`;
+            const fullName = path.join(directoryName, fileNameWithExt);
+            const url = `${baseUrl}/${snapshots.getPath(id)}`;
+
+            try {
+                const { data } = await axios.get(url, { responseType: 'arraybuffer' });
+
+                fs.writeFileSync(fullName, data);
+    
+                log(`Downloaded file ${fileNameWithExt}`);
+            } catch {
+                log(`Error while fetching file ${fileNameWithExt}`);
+            }
+        }
+
+        log('');
+    }
+}
+
+/**
+ * 
+ * 
+ * @param {string} directoryName String with name of directory.
+ * @param {moment.Moment} startDate Start date of motion as moment instance.
+ * @param {moment.Moment} endDate End date of motion as moment instance.
+ */
+async function fetchVideos(directoryName, startDate, endDate) {
+    const options = {
+        targetDirectory: directoryName,
+        startDate: startDate.format(format.date),
+        endDate: endDate.format(format.date),
+        startTime: startDate.format(format.time),
+        endTime: endDate.format(format.time)
+    };
+
+    await execFetchCommand(options);
+}
+
+/**
+ * Downloads, transfers and converts recorded videos of detected motion.
  * 
  * @param {object} motion Object with motion entry.
  * @param {number} idx Index of motion entry.
+ * @param {number} len Length of motion entries.
  */
-async function downloadRecords(motion, idx) {
-    const ipcamsd = config.ipcamsd;
+async function fetchMedia(motion, idx, len) {
     const dates = getMotionDates(motion);
 
     let startDate = moment(dates.start);
@@ -274,24 +289,22 @@ async function downloadRecords(motion, idx) {
     let name = `${startDate.format('YYYYMMDD_HHmmss')}_${endDate.format('HHmmss')}`;
 
     log('');
-    log(chalk.cyanBright.bold.underline(`${('0' + (idx + 1)).slice(-2)}. ${name}`));
+    log(chalk.cyanBright.bold.underline(`${padWithZeros(idx + 1, len)}. ${name}`));
 
     let directoryName = createDirectory(name);
 
     if (directoryName) {
-        const format = config.format;
+        const opts = config.options;
 
-        const options = {
-            targetDirectory: directoryName,
-            startDate: startDate.format(format.date),
-            endDate: endDate.format(format.date),
-            startTime: startDate.format(format.time),
-            endTime: endDate.format(format.time)
-        };
-
-        await execFetchCommand(ipcamsd, options);
+        if (opts.snapshots) {
+            await fetchSnapshots(directoryName, motion);
+        }
+        
+        if (opts.videos) {
+            await fetchVideos(directoryName, startDate, endDate);
+        }
     } else {
-        log(setPrefix('No actions executed. Directory already exists.', ' ', 4));
+        log('No actions executed. Directory already exists.');
     }
 }
 
@@ -300,11 +313,12 @@ async function downloadRecords(motion, idx) {
  */
 async function fetchRecords() {
     let times = getTimes();
-    let motions = await getMotions(times.start, times.end);
-    let { count, data } = motions;
+    let { count, data } = await getMotions(times.start, times.end);
 
-    if (data && Array.isArray(data)) {
-        if (config.restApi.endpoints.motions.reverse) {
+    if (Array.isArray(data)) {
+        const len = data.length;
+
+        if (motions.reverse) {
             data = data.reverse();
         }
 
@@ -312,8 +326,10 @@ async function fetchRecords() {
             log(chalk.magentaBright(`${count} motion${count > 1 ? 's' : ''} found.`));
         }
 
-        for (let i = 0; i < data.length; i++) {
-            await downloadRecords(data[i], i);
+        for (let i = 0; i < len; i++) {
+            const motion = data[i];
+
+            await fetchMedia(motion, i, len);
         }
     }
 }

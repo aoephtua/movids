@@ -8,13 +8,14 @@ import { process } from './lib.mjs';
 
 program
     .name('movids')
-    .version('1.1.0', '-v, --version')
+    .version('1.2.0', '-v, --version')
     .requiredOption('--start-date <yyyymmdd|today|yesterday>', 'start date of records')
     .requiredOption('--start-time <hhmm>', 'start time of records')
     .requiredOption('--end-date <yyyymmdd|today|yesterday>', 'end date of records')
-    .requiredOption('--end-time <hhmm>', 'end time of records');
-
-program.parse();
+    .requiredOption('--end-time <hhmm>', 'end time of records')
+    .option('--no-snapshots', 'skip fetching snapshots')
+    .option('--no-videos', 'skip fetching videos')
+    .parse();
 
 const options = program.opts();
 

@@ -24,12 +24,14 @@ Transfers and converts records of the specified parameters.
 
 ```
 Options:
-  --version                                output the version number
+  -v, --version                            output the version number
   --start-date <yyyymmdd|today|yesterday>  start date of records
   --start-time <hhmm>                      start time of records
   --end-date <yyyymmdd|today|yesterday>    end date of records
   --end-time <hhmm>                        end time of records
-  --help                                   display help for command
+  --no-snapshots                           skip fetching snapshots
+  --no-videos                              skip fetching videos
+  -h, --help                               display help for command
 ```
 
 ### Configuration
@@ -48,6 +50,13 @@ const config = {
                 keys: {
                     date: 'date',
                     endDate: 'endDate'
+                },
+                snapshots: {
+                    key: 'snapshots',
+                    id: '_id',
+                    name: 'name',
+                    getPath: id => `media/motion/snapshot/${id}`,
+                    ext: 'jpg'
                 },
                 queryParams: {
                     device: '63f47d4503961d23f1ea98f2'
