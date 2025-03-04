@@ -10,6 +10,11 @@ import Ipcamsd from 'ipcamsd';
 import config from './config.mjs';
 
 /**
+ * Initializes standard output (stdout).
+ */
+Ipcamsd.initStdOutput();
+
+/**
  * Writes a message to the console.
  */
 const log = console.log;
