@@ -233,7 +233,7 @@ async function fetchSnapshots(directoryName, motion) {
 
     if (snapshots) {
         const { [snapshots.key]: entries } = motion;
-        const len = entries.length;
+        const len = entries?.length;
 
         if (len) {
             log(chalk.green.bold('Snapshots'));
